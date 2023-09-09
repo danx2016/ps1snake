@@ -11,7 +11,7 @@ static uint8_t snake_head_col;
 static uint8_t snake_head_row;
 static uint8_t snake_tail_col;
 static uint8_t snake_tail_row;
-static uint8_t snake_direction;
+static SNAKE_DIR snake_direction;
 
 static void create_food()
 {
@@ -36,12 +36,12 @@ void reset_game(void)
     snake_tail_row = snake_head_row;
     game_score = 0;
     game_status = SNAKE_STATUS_PLAYING;
-    snake_direction = 1 + (rand() % 4);
+    snake_direction = UP;
     game_grid[snake_head_row][snake_head_col] = SNAKE_HEAD;
     create_food();
 }
 
-void set_snake_direction(uint8_t direction)
+void set_snake_direction(SNAKE_DIR direction)
 {
     snake_direction = direction;
 }

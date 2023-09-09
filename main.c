@@ -33,19 +33,19 @@ void update_snake_direction()
 
     if (padInfo & _PAD(0, PADLup))
     {
-        set_snake_direction(SNAKE_DIR_UP);
+        set_snake_direction(UP);
     }
     if (padInfo & _PAD(0, PADLdown))
     {
-        set_snake_direction(SNAKE_DIR_DOWN);
+        set_snake_direction(DOWN);
     }
     if (padInfo & _PAD(0, PADLleft))
     {
-        set_snake_direction(SNAKE_DIR_LEFT);
+        set_snake_direction(LEFT);
     }
     if (padInfo & _PAD(0, PADLright))
     {
-        set_snake_direction(SNAKE_DIR_RIGHT);
+        set_snake_direction(RIGHT);
     }
 
     if (padInfo && game_status == SNAKE_STATUS_GAME_OVER)
