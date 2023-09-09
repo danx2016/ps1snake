@@ -1,127 +1,131 @@
 
+#include <sys/types.h>
 #include <libetc.h>
 #include <libgpu.h>
 #include <libgte.h>
 #include <stdlib.h>
+#include <stdint.h>
 
-#define ARRAY_SIZE(a) (sizeof(a) / sizeof(*(a)))
+#include "snake.h"
+ 
+DISPENV disp[2];
+DRAWENV draw[2]; 
+int32_t db = 0;
 
-#define OTSIZE 4096
-#define SCREEN_Z 512
-#define CUBESIZE 196
-
-typedef struct DB {
-    DRAWENV draw;
-    DISPENV disp;
-    u_long ot[OTSIZE];
-    POLY_F4 s[6];
-} DB;
-
-static SVECTOR cube_vertices[] = {
-    {-CUBESIZE / 2, -CUBESIZE / 2, -CUBESIZE / 2, 0}, {CUBESIZE / 2, -CUBESIZE / 2, -CUBESIZE / 2, 0},
-    {CUBESIZE / 2, CUBESIZE / 2, -CUBESIZE / 2, 0},   {-CUBESIZE / 2, CUBESIZE / 2, -CUBESIZE / 2, 0},
-    {-CUBESIZE / 2, -CUBESIZE / 2, CUBESIZE / 2, 0},  {CUBESIZE / 2, -CUBESIZE / 2, CUBESIZE / 2, 0},
-    {CUBESIZE / 2, CUBESIZE / 2, CUBESIZE / 2, 0},    {-CUBESIZE / 2, CUBESIZE / 2, CUBESIZE / 2, 0},
+// grid cell colors
+CVECTOR gcc[18] = {
+    {   0,   0,   0 }, {   0,   0, 255 },
+    {   0,   0, 255 }, {   0,   0, 255 },
+    {   0,   0, 255 }, {   0,   0, 255 },
+    {   0,   0, 255 }, {   0,   0, 255 },
+    {   0,   0, 255 }, {   0,   0, 255 },
+    {   0,   0, 255 }, {   0,   0, 255 },
+    {   0,   0, 255 }, {   0,   0, 255 },
+    {   0,   0, 255 }, { 255,   0,   0 },
+    {   0, 255,   0 }, {   0,   0, 255 }
 };
 
-static int cube_indices[] = {
-    0, 1, 2, 3, 1, 5, 6, 2, 5, 4, 7, 6, 4, 0, 3, 7, 4, 5, 1, 0, 6, 7, 3, 2,
-};
+int32_t first_play = 1;
 
-static void init_cube(DB *db, CVECTOR *col) {
-    size_t i;
+void update_snake_direction()
+{
+    uint32_t padInfo = PadRead(0);
 
-    for (i = 0; i < ARRAY_SIZE(db->s); ++i) {
-        SetPolyF4(&db->s[i]);
-        setRGB0(&db->s[i], col[i].r, col[i].g, col[i].b);
+    if (padInfo & _PAD(0, PADLup))
+    {
+        set_snake_direction(SNAKE_DIR_UP);
+    }
+    if (padInfo & _PAD(0, PADLdown))
+    {
+        set_snake_direction(SNAKE_DIR_DOWN);
+    }
+    if (padInfo & _PAD(0, PADLleft))
+    {
+        set_snake_direction(SNAKE_DIR_LEFT);
+    }
+    if (padInfo & _PAD(0, PADLright))
+    {
+        set_snake_direction(SNAKE_DIR_RIGHT);
+    }
+
+    if (padInfo && game_status == SNAKE_STATUS_GAME_OVER)
+    {
+        srand(VSync(-1));
+        reset_game();
+        first_play = 0;
     }
 }
 
-static void add_cube(u_long *ot, POLY_F4 *s, MATRIX *transform) {
-    long p, otz, flg;
-    int nclip;
-    size_t i;
-
-    SetRotMatrix(transform);
-    SetTransMatrix(transform);
-
-    for (i = 0; i < ARRAY_SIZE(cube_indices); i += 4, ++s) {
-        nclip = RotAverageNclip4(&cube_vertices[cube_indices[i + 0]], &cube_vertices[cube_indices[i + 1]],
-                                 &cube_vertices[cube_indices[i + 2]], &cube_vertices[cube_indices[i + 3]],
-                                 (long *)&s->x0, (long *)&s->x1, (long *)&s->x3, (long *)&s->x2, &p, &otz, &flg);
-
-        if (nclip <= 0) continue;
-
-        if ((otz > 0) && (otz < OTSIZE)) AddPrim(&ot[otz], s);
+void render()
+{
+    if (game_status == SNAKE_STATUS_PLAYING)
+    {
+        for (uint8_t row = 0; row < SNAKE_GRID_ROWS; row++)
+        {
+            for (uint8_t col = 0; col < SNAKE_GRID_COLS; col++)
+            {
+                uint8_t cid = game_grid[row][col];
+                if (cid > 0)
+                {
+                    TILE_16 tile;
+                    setTile16(&tile);
+                    setRGB0(&tile, gcc[cid].r, gcc[cid].g, gcc[cid].b);
+                    setXY0(&tile, 16 * col, 16 * row);
+                    DrawPrim(&tile);
+                    DrawSync(0);
+                }
+            }
+        }
     }
+    else if (first_play)
+    {
+        FntPrint(1, "PRESS BUTTON TO START");
+    }
+    else
+    {
+        FntPrint(1, "     GAME OVER !     ");    
+    }
+    FntPrint(0, "SCORE %d", game_score);    
 }
 
-int main(void) {
-    DB db[2];
-    DB *cdb;
-    SVECTOR rotation = {0};
-    VECTOR translation = {0, 0, (SCREEN_Z * 3) / 2, 0};
-    MATRIX transform;
-    CVECTOR col[6];
-    size_t i;
-
+int main()
+{
     ResetGraph(0);
-    InitGeom();
+    PadInit(0);
 
-    SetGraphDebug(0);
+    SetDefDispEnv(&disp[0], 0, 0, 320, 240);
+    SetDefDispEnv(&disp[1], 0, 240, 320, 240);
+    SetDefDrawEnv(&draw[0], 0, 240, 320, 240);
+    SetDefDrawEnv(&draw[1], 0, 0, 320, 240);
 
-    FntLoad(960, 256);
-    SetDumpFnt(FntOpen(32, 32, 320, 64, 0, 512));
-
-    SetGeomOffset(320, 240);
-    SetGeomScreen(SCREEN_Z);
-
-    SetDefDrawEnv(&db[0].draw, 0, 0, 640, 480);
-    SetDefDrawEnv(&db[1].draw, 0, 0, 640, 480);
-    SetDefDispEnv(&db[0].disp, 0, 0, 640, 480);
-    SetDefDispEnv(&db[1].disp, 0, 0, 640, 480);
-
-    srand(0);
-
-    for (i = 0; i < ARRAY_SIZE(col); ++i) {
-        col[i].r = rand();
-        col[i].g = rand();
-        col[i].b = rand();
-    }
-
-    init_cube(&db[0], col);
-    init_cube(&db[1], col);
-
+    draw[0].isbg = 1;
+    draw[1].isbg = 1;
+    setRGB0(&draw[0], 32, 32, 32);
+    setRGB0(&draw[1], 32, 32, 32);
     SetDispMask(1);
+    
+    FntLoad(320, 0);
+    FntOpen(12, 16, 256, 64, 0, 512);
+    FntOpen(72, 108, 200, 64, 0, 512);
+    
+    uint32_t frame_count = 0;
 
-    PutDrawEnv(&db[0].draw);
-    PutDispEnv(&db[0].disp);
+    while (1)
+    {
+        update_snake_direction();
+        if (frame_count++ % 10 == 0)
+        {
+            game_tick();
+        }
+        render();
 
-    while (1) {
-        cdb = (cdb == &db[0]) ? &db[1] : &db[0];
-
-        rotation.vy += 16;
-        rotation.vz += 16;
-
-        RotMatrix(&rotation, &transform);
-        TransMatrix(&transform, &translation);
-
-        ClearOTagR(cdb->ot, OTSIZE);
-
-        FntPrint("Code compiled using Psy-Q libraries\n\n");
-        FntPrint("converted by psyq-obj-parser\n\n");
-        FntPrint("PCSX-Redux project\n\n");
-        FntPrint("https://bit.ly/pcsx-redux");
-
-        add_cube(cdb->ot, cdb->s, &transform);
-
+        FntFlush(0);
+        FntFlush(1);
         DrawSync(0);
         VSync(0);
-
-        ClearImage(&cdb->draw.clip, 60, 120, 120);
-
-        DrawOTag(&cdb->ot[OTSIZE - 1]);
-        FntFlush(-1);
+        db = !db;
+        PutDispEnv(&disp[db]);
+        PutDrawEnv(&draw[db]);
     }
 
     return 0;
