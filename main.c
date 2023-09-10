@@ -48,7 +48,7 @@ void update_snake_direction()
         set_snake_direction(RIGHT);
     }
 
-    if (padInfo && game_status == SNAKE_STATUS_GAME_OVER)
+    if (padInfo && game_status == GAME_OVER)
     {
         srand(VSync(-1));
         reset_game();
@@ -58,7 +58,7 @@ void update_snake_direction()
 
 void render()
 {
-    if (game_status == SNAKE_STATUS_PLAYING)
+    if (game_status == PLAYING)
     {
         for (uint8_t row = 0; row < SNAKE_GRID_ROWS; row++)
         {

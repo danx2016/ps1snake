@@ -4,7 +4,7 @@
 #include "snake.h"
 
 uint32_t game_score = 0;
-uint8_t game_status = SNAKE_STATUS_GAME_OVER;
+SNAKE_STATUS game_status = GAME_OVER;
 uint8_t game_grid[SNAKE_GRID_ROWS][SNAKE_GRID_COLS];
 
 static uint8_t snake_head_col;
@@ -29,13 +29,13 @@ static void create_food()
 
 void reset_game(void)
 {
-    memset(game_grid, SNAKE_EMPTY, SNAKE_GRID_COLS * SNAKE_GRID_ROWS * sizeof(uint8_t));
+    memset(game_grid, SNAKE_EMPTY, SNAKE_GRID_COLS * SNAKE_GRID_ROWS);
     snake_head_col = SNAKE_GRID_COLS / 2;
     snake_head_row = SNAKE_GRID_ROWS / 2;
     snake_tail_col = snake_head_col;
     snake_tail_row = snake_head_row;
     game_score = 0;
-    game_status = SNAKE_STATUS_PLAYING;
+    game_status = PLAYING;
     snake_direction = UP;
     game_grid[snake_head_row][snake_head_col] = SNAKE_HEAD;
     create_food();
@@ -48,7 +48,7 @@ void set_snake_direction(SNAKE_DIR direction)
 
 void game_tick()
 {
-    if (game_status == SNAKE_STATUS_GAME_OVER)
+    if (game_status == GAME_OVER)
     {
         return;
     }
@@ -63,7 +63,7 @@ void game_tick()
         snake_head_col > SNAKE_GRID_COLS - 1 || 
         snake_head_row > SNAKE_GRID_ROWS - 1)
     {
-        game_status = SNAKE_STATUS_GAME_OVER;
+        game_status = GAME_OVER;
         return;
     }
     game_grid[snake_head_prev_row][snake_head_prev_col] = snake_direction;
@@ -77,14 +77,14 @@ void game_tick()
     // touch own body
     else if (game_grid[snake_head_row][snake_head_col] > 0)
     {
-        game_status = SNAKE_STATUS_GAME_OVER;
+        game_status = GAME_OVER;
         game_grid[snake_head_row][snake_head_col] = SNAKE_HEAD;
         return;
     }
     // empty
     else 
     {
-        int tail_direction = game_grid[snake_tail_row][snake_tail_col];
+        SNAKE_DIR tail_direction = game_grid[snake_tail_row][snake_tail_col];
         game_grid[snake_tail_row][snake_tail_col] = SNAKE_EMPTY;
         game_grid[snake_head_row][snake_head_col] = SNAKE_HEAD;
 
